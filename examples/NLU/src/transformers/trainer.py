@@ -1061,6 +1061,7 @@ class Trainer:
                 annealing_alpha = alpha_scheduler(curr_epoch=epoch, curr_step=epoch*num_update_steps_per_epoch+step, 
                         end_step=int(0.8*total_steps), base_val=1,
                         total_steps=total_steps, scheduler_type="linear")
+                print('Annealing alpha: {}'.format(annealing_alpha))
                 for name, param in model.named_parameters():
                     if  "annealing_alpha" in name:
                         param.requires_grad = False
@@ -1192,6 +1193,7 @@ class Trainer:
             self.store_flos()
             metrics["total_flos"] = self.state.total_flos
         self.log(metrics)
+        #log alpha
         self.log({'alpha': annealing_alpha})
 
         self.control = self.callback_handler.on_train_end(self.args, self.state, self.control)
