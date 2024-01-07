@@ -9,7 +9,7 @@ examples/text-classification/run_glue.py \
 --do_train \
 --do_eval \
 --max_seq_length 512 \
---per_device_train_batch_size 16 \
+--per_device_train_batch_size 64 \
 --learning_rate 5e-4 \
 --num_train_epochs 30 \
 --output_dir $output_dir/model \
@@ -20,7 +20,7 @@ examples/text-classification/run_glue.py \
 --save_strategy epoch \
 --warmup_ratio 0.06 \
 --apply_lora \
---lora_r 8 \
+--lora_r 64 \
 --lora_alpha 16 \
 --seed 0 \
 --weight_decay 0.1
