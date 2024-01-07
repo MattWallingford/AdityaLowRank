@@ -1022,7 +1022,9 @@ class Trainer:
                 # We just need to begin an iteration to create the randomization of the sampler.
                 for _ in train_dataloader:
                     break
-
+        print(model)
+        import sys 
+        sys.exit()
         for epoch in range(epochs_trained, num_train_epochs):
             if isinstance(train_dataloader, DataLoader) and isinstance(train_dataloader.sampler, DistributedSampler):
                 train_dataloader.sampler.set_epoch(epoch)
@@ -1098,7 +1100,7 @@ class Trainer:
                                 self.args.max_grad_norm,
                                 error_if_nonfinite=False
                             )
-
+                    
                     # Optimizer step
                     if self.deepspeed:
                         pass  # called outside the loop
@@ -1112,11 +1114,13 @@ class Trainer:
 
                     if not self.deepspeed:
                         self.lr_scheduler.step()
+                    
 
                     model.zero_grad()
                     self.state.global_step += 1
                     self.state.epoch = epoch + (step + 1) / steps_in_epoch
                     self.control = self.callback_handler.on_step_end(self.args, self.state, self.control)
+
 
                     self._maybe_log_save_evaluate(tr_loss, model, trial, epoch)
 
@@ -1125,6 +1129,8 @@ class Trainer:
 
             self.control = self.callback_handler.on_epoch_end(self.args, self.state, self.control)
             self._maybe_log_save_evaluate(tr_loss, model, trial, epoch)
+            #Set alpha 
+
 
             if self.args.tpu_metrics_debug or self.args.debug:
                 if is_torch_tpu_available():

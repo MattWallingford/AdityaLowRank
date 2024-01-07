@@ -16,6 +16,7 @@ class LoRALayer():
         lora_alpha: int, 
         lora_dropout: float,
         merge_weights: bool,
+        annealing_alpha: float = 1.0
     ):
         self.r = r
         self.lora_alpha = lora_alpha
@@ -38,11 +39,13 @@ class Embedding(nn.Embedding, LoRALayer):
         r: int = 0,
         lora_alpha: int = 1,
         merge_weights: bool = True,
+        annealing_alpha: float = 1.0,
         **kwargs
     ):
         nn.Embedding.__init__(self, num_embeddings, embedding_dim, **kwargs)
         LoRALayer.__init__(self, r=r, lora_alpha=lora_alpha, lora_dropout=0,
-                           merge_weights=merge_weights)
+                           merge_weights=merge_weights, annealing_alpha = annealing_alpha)
+        self.annealing_alpha = annealing_alpha
         # Actual trainable parameters
         if r > 0:
             self.lora_A = nn.Parameter(self.weight.new_zeros((r, num_embeddings)))
@@ -61,22 +64,22 @@ class Embedding(nn.Embedding, LoRALayer):
 
     def train(self, mode: bool = True):
         nn.Embedding.train(self, mode)
-        if mode:
-            if self.merge_weights and self.merged:
-                # Make sure that the weights are not merged
-                if self.r > 0:
-                    self.weight.data -= (self.lora_B @ self.lora_A).transpose(0, 1) * self.scaling
-                self.merged = False
-        else:
-            if self.merge_weights and not self.merged:
-                # Merge the weights and mark it
-                if self.r > 0:
-                    self.weight.data += (self.lora_B @ self.lora_A).transpose(0, 1) * self.scaling
-                self.merged = True
+        # if mode:
+        #     if self.merge_weights and self.merged:
+        #         # Make sure that the weights are not merged
+        #         if self.r > 0:
+        #             self.weight.data -= (self.lora_B @ self.lora_A).transpose(0, 1) * self.scaling
+        #         self.merged = False
+        # else:
+        #     if self.merge_weights and not self.merged:
+        #         # Merge the weights and mark it
+        #         if self.r > 0:
+        #             self.weight.data += (self.lora_B @ self.lora_A).transpose(0, 1) * self.scaling
+        #         self.merged = True
         
     def forward(self, x: torch.Tensor):
         if self.r > 0 and not self.merged:
-            result = nn.Embedding.forward(self, x)
+            result = self.annealing_alpha*nn.Embedding.forward(self, x)
             after_A = F.embedding(
                 x, self.lora_A.transpose(0, 1), self.padding_idx, self.max_norm,
                 self.norm_type, self.scale_grad_by_freq, self.sparse
@@ -84,6 +87,7 @@ class Embedding(nn.Embedding, LoRALayer):
             result += (after_A @ self.lora_B.transpose(0, 1)) * self.scaling
             return result
         else:
+            #need to handle merging
             return nn.Embedding.forward(self, x)
             
 
@@ -98,12 +102,13 @@ class Linear(nn.Linear, LoRALayer):
         lora_dropout: float = 0.,
         fan_in_fan_out: bool = False, # Set this to True if the layer to replace stores weight like (fan_in, fan_out)
         merge_weights: bool = True,
+        annealing_alpha: float = 1,
         **kwargs
     ):
         nn.Linear.__init__(self, in_features, out_features, **kwargs)
         LoRALayer.__init__(self, r=r, lora_alpha=lora_alpha, lora_dropout=lora_dropout,
-                           merge_weights=merge_weights)
-
+                           merge_weights=merge_weights, annealing_alpha = annealing_alpha)
+        self.annealing_alpha = annealing_alpha
         self.fan_in_fan_out = fan_in_fan_out
         # Actual trainable parameters
         if r > 0:
@@ -125,27 +130,28 @@ class Linear(nn.Linear, LoRALayer):
             nn.init.zeros_(self.lora_B)
 
     def train(self, mode: bool = True):
-        def T(w):
-            return w.transpose(0, 1) if self.fan_in_fan_out else w
         nn.Linear.train(self, mode)
-        if mode:
-            if self.merge_weights and self.merged:
-                # Make sure that the weights are not merged
-                if self.r > 0:
-                    self.weight.data -= T(self.lora_B @ self.lora_A) * self.scaling
-                self.merged = False
-        else:
-            if self.merge_weights and not self.merged:
-                # Merge the weights and mark it
-                if self.r > 0:
-                    self.weight.data += T(self.lora_B @ self.lora_A) * self.scaling
-                self.merged = True       
+        # def T(w):
+        #     return w.transpose(0, 1) if self.fan_in_fan_out else w
+        # nn.Linear.train(self, mode)
+        # if mode:
+        #     if self.merge_weights and self.merged:
+        #         # Make sure that the weights are not merged
+        #         if self.r > 0:
+        #             self.weight.data -= T(self.lora_B @ self.lora_A) * self.scaling
+        #         self.merged = False
+        # else:
+        #     if self.merge_weights and not self.merged:
+        #         # Merge the weights and mark it
+        #         if self.r > 0:
+        #             self.weight.data += T(self.lora_B @ self.lora_A) * self.scaling
+        #         self.merged = True       
 
     def forward(self, x: torch.Tensor):
         def T(w):
             return w.transpose(0, 1) if self.fan_in_fan_out else w
         if self.r > 0 and not self.merged:
-            result = F.linear(x, T(self.weight), bias=self.bias)            
+            result = self.annealing_alpha * F.linear(x, T(self.weight), bias=self.bias)            
             result += (self.lora_dropout(x) @ self.lora_A.transpose(0, 1) @ self.lora_B.transpose(0, 1)) * self.scaling
             return result
         else:
