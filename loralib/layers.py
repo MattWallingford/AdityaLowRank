@@ -39,7 +39,7 @@ class Embedding(nn.Embedding, LoRALayer):
         r: int = 0,
         lora_alpha: int = 1,
         merge_weights: bool = True,
-        annealing_alpha: float = 1.0,
+        annealing_alpha = nn.Parameter(torch.tensor(1.0)),
         **kwargs
     ):
         nn.Embedding.__init__(self, num_embeddings, embedding_dim, **kwargs)
@@ -102,7 +102,7 @@ class Linear(nn.Linear, LoRALayer):
         lora_dropout: float = 0.,
         fan_in_fan_out: bool = False, # Set this to True if the layer to replace stores weight like (fan_in, fan_out)
         merge_weights: bool = True,
-        annealing_alpha: float = 1,
+        annealing_alpha = nn.Parameter(torch.tensor(1.0)),
         **kwargs
     ):
         nn.Linear.__init__(self, in_features, out_features, **kwargs)

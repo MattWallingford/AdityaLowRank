@@ -1022,9 +1022,7 @@ class Trainer:
                 # We just need to begin an iteration to create the randomization of the sampler.
                 for _ in train_dataloader:
                     break
-        print(model)
-        import sys 
-        sys.exit()
+
         for epoch in range(epochs_trained, num_train_epochs):
             if isinstance(train_dataloader, DataLoader) and isinstance(train_dataloader.sampler, DistributedSampler):
                 train_dataloader.sampler.set_epoch(epoch)
@@ -1048,7 +1046,24 @@ class Trainer:
             )
             self.control = self.callback_handler.on_epoch_begin(self.args, self.state, self.control)
 
+            def alpha_scheduler(curr_epoch, curr_step, end_step, base_val, total_steps, scheduler_type):
+                next_alpha = 0
+                if curr_step == 0:
+                    next_alpha = base_val
+                if scheduler_type == "linear":
+                    next_alpha = max(0, base_val - base_val*(curr_step/end_step))
+                
+                return next_alpha
+                    
+
             for step, inputs in enumerate(epoch_iterator):
+                total_steps = num_update_steps_per_epoch*num_train_epochs
+                for name, param in model.named_parameters():
+                    if  "annealing_alpha" in name:
+                        param.requires_grad = False
+                        param = torch.tensor(alpha_scheduler(curr_epoch=epoch, curr_step=epoch*num_update_steps_per_epoch+step, 
+                        end_step=int(0.8*total_steps), base_val=1,
+                        total_steps=total_steps, scheduler_type="linear"))
 
                 # Skip past any already trained steps if resuming training
                 if steps_trained_in_current_epoch > 0:
@@ -1129,7 +1144,6 @@ class Trainer:
 
             self.control = self.callback_handler.on_epoch_end(self.args, self.state, self.control)
             self._maybe_log_save_evaluate(tr_loss, model, trial, epoch)
-            #Set alpha 
 
 
             if self.args.tpu_metrics_debug or self.args.debug:
