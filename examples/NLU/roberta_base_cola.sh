@@ -15,6 +15,7 @@ examples/text-classification/run_glue.py \
 --output_dir $output_dir/model \
 --overwrite_output_dir \
 --logging_steps 10 \
+--ending_step_ratio .5 \
 --logging_dir $output_dir/log \
 --evaluation_strategy epoch \
 --save_strategy epoch \
