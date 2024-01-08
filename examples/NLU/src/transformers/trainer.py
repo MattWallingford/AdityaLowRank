@@ -1055,14 +1055,13 @@ class Trainer:
                 
                 elif scheduler_type == "baseline":
                     next_alpha = 1
-                
                 return next_alpha
                     
 
             for step, inputs in enumerate(epoch_iterator):
                 total_steps = num_update_steps_per_epoch*num_train_epochs
                 annealing_alpha = alpha_scheduler(curr_epoch=epoch, curr_step=epoch*num_update_steps_per_epoch+step, 
-                        end_step=int(0.5*total_steps), base_val=1,
+                        end_step=int(self.args.ending_step_ratio*total_steps), base_val=1,
                         total_steps=total_steps, scheduler_type="linear")
                 print('Annealing alpha: {}'.format(annealing_alpha))
                 for name, param in model.named_parameters():

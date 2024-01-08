@@ -347,7 +347,7 @@ class TrainingArguments:
         default=None,
         metadata={"help": "Number of predictions steps to accumulate before moving the tensors to the CPU."},
     )
-
+    ending_step_ratio: float = field(default=.8, metadata={"help": "Where to have annealing alpha go to 0 as a ratio of total training steps."})
     learning_rate: float = field(default=5e-5, metadata={"help": "The initial learning rate for AdamW."})
     weight_decay: float = field(default=0.0, metadata={"help": "Weight decay for AdamW if we apply some."})
     adam_beta1: float = field(default=0.9, metadata={"help": "Beta1 for AdamW optimizer"})
